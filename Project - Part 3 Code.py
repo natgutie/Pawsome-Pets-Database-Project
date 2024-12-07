@@ -147,6 +147,68 @@ insert_into_exam = """
     (205, 'Tigre', '05-10-2022', 'Canis lupus familiaris', 'German shepard mix', 'Brown', 0015, 2005),
     """
 
+# ---------- SQL Queries for 2c using Embedded SQL ------------
+
+# 1. Register a new pet and its owner at "Healthy Paws"
+register_pet_query = """
+    -- Insert Jane Smith into PetOwner table
+    INSERT OR IGNORE INTO PetOwner (ownerNo, ownerName, ownerAddress, ownerPhoneNumber, clinicNo)
+    VALUES (189, 'Jane Smith', '123 Yellow Road, Coral Gables, FL 33146', '3055551234', 11);
+
+    -- Insert Brandy into Pet table
+    INSERT OR IGNORE INTO Pet (petNo, petName, petDOB, animalSpecies, petBreed, petColor, clinicNo, ownerNo)
+    VALUES (306, 'Brandy', '2017-05-05', 'Dog', 'Golden Retriever', 'Yellow', 11, 189);
+"""
+cursor.executescript(register_pet_query)
+print("Registered new pet and owner successfully.")
+
+# 2. Schedule an examination for Charlie
+schedule_exam_query = """
+    INSERT OR IGNORE INTO Examination (examNo, complaint, dateSeen, actionsTaken, staffNo, petNo)
+    VALUES (21, 'Persistent itching', '2024-11-20', 'Skin test and prescribed hypoallergenic shampoo', 1015, 201);
+"""
+cursor.execute(schedule_exam_query)
+print("Scheduled examination for Charlie successfully.")
+
+# 3. List details of examinations performed by Lisa Martinez at "Healthy Paws"
+list_exams_query = """
+    SELECT e.examNo, e.complaint, e.dateSeen, e.actionsTaken, p.petName
+    FROM Examination e
+    JOIN Staff s ON e.staffNo = s.staffNo
+    JOIN Pet p ON e.petNo = p.petNo
+    WHERE s.staffName = 'Lisa Martinez' AND s.clinicNo = 11;
+"""
+cursor.execute(list_exams_query)
+exams_results = cursor.fetchall()
+exams_columns = [description[0] for description in cursor.description]
+exams_df = pd.DataFrame(exams_results, columns=exams_columns)
+print("Examinations by Lisa Martinez at 'Healthy Paws':")
+print(exams_df)
+
+# 4. Fetch staff details and manager information for "Healthy Paws"
+staff_manager_query = """
+    SELECT s.staffName AS staffName, s.staffPosition AS position, 
+           m.staffName AS managerName, m.staffPosition AS managerPosition, m.staffSalary AS managerSalary
+    FROM Staff s
+    LEFT JOIN Staff m ON s.clinicNo = m.clinicNo AND m.staffPosition LIKE '%Manager%'
+    WHERE s.clinicNo = 11;
+"""
+cursor.execute(staff_manager_query)
+staff_results = cursor.fetchall()
+staff_columns = [description[0] for description in cursor.description]
+staff_df = pd.DataFrame(staff_results, columns=staff_columns)
+print("Staff and Manager details for 'Healthy Paws':")
+print(staff_df)
+
+# 5. Update Henry Green's position and salary
+update_henry_query = """
+    UPDATE Staff
+    SET staffPosition = 'Veterinarian and Clinic Manager', staffSalary = 150000
+    WHERE staffNo = 1002 AND clinicNo = 11;
+"""
+cursor.execute(update_henry_query)
+print("Promoted Henry Green successfully.")
+
 # Extract column names from cursor
 column_names = [row[0] for row in cursor.description]
 
@@ -161,9 +223,12 @@ print(df.columns)
 # Example to extract a specific column
 # print(df['name'])
 
-
 # Commit any changes to the database
 db_connect.commit()
+
+# Close the connection if we are done with it.
+# Just be sure any changes have been committed or they will be lost.
+db_connect.close()
 
 # Close the connection if we are done with it.
 # Just be sure any changes have been committed or they will be lost.
